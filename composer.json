@@ -1,0 +1,23 @@
+{
+    "name": "travisghansen/kubernetes-client-php",
+    "type": "library",
+    "description": "Kubernetes API client in PHP",
+    "license": "Apache-2.0",
+    "keywords": ["kubernetes", "api", "client", "k8s", "php"],
+    "homepage": "https://github.com/travisghansen/kubernetes-client-php/",
+    "authors": [
+        {
+            "name" : "Travis Glenn Hansen"
+        }
+    ],
+    "require": {
+        "php": ">=7.2.0",
+        "ext-yaml": "*"
+    },
+    "suggest": {
+        "ext-pcntl": "support forking of watches"
+    },
+    "autoload": {
+        "psr-0": {"KubernetesClient\\": "src/"}
+    }
+}
