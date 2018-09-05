@@ -45,7 +45,7 @@ class Client
             'http'=>array(
                 'method'=>"GET",
                 'ignore_errors' => true,
-                'header' => "Content-Type: application/json\r\n"
+                'header' => "Accept: application/json, */*\r\nContent-Encoding: gzip\r\n"
             ),
             'ssl'=>array(
                 'cafile' => $this->config->getCertificateAuthorityPath(),
@@ -73,6 +73,20 @@ class Client
     {
         $o = array_merge_recursive($this->getContextOptions(), $opts);
         $o['http']['method'] = $verb;
+
+        if ($verb == 'PATCH') {
+            /**
+             * https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#patch-operations
+             * https://github.com/kubernetes/community/blob/master/contributors/devel/strategic-merge-patch.md
+             *
+             * Content-Type: application/json-patch+json
+             * Content-Type: application/merge-patch+json
+             * Content-Type: application/strategic-merge-patch+json
+             */
+            $o['http']['header'] .= "Content-Type: application/merge-patch+json\r\n";
+        } else {
+            $o['http']['header'] .= "Content-Type: application/json\r\n";
+        }
 
         return stream_context_create($o);
     }

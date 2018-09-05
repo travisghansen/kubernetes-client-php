@@ -88,6 +88,7 @@ stop the watch (break the loop) based off of event logic.
 
 # Links
  * https://github.com/swagger-api/swagger-codegen/blob/master/README.md
+ * https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#api-conventions
  * https://kubernetes.io/docs/reference/using-api/client-libraries/#community-maintained-client-libraries
  * https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/
  * https://kubernetes.io/docs/reference/using-api/api-concepts/
