@@ -13,12 +13,12 @@ class Watch
     /**
      * Default streamTimeout
      */
-    const DEFAULT_STREAM_TIMEOUT = (int) (100 * 1000);
+    const DEFAULT_STREAM_TIMEOUT = 100000;
 
     /**
      * Default streamReadLength
      */
-    const DEFAULT_STREAM_READ_LENGTH = (int) 8192;
+    const DEFAULT_STREAM_READ_LENGTH = 8192;
 
     /**
      * Client instance;
