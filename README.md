@@ -25,10 +25,34 @@ $state['metallb']['config'] = $response;
 $response = $client->request('/api/v1/nodes');
 $state['nodes']['list'] = $response;
 
+//POST
+$data = [
+    'kind' => 'ConfigMap',
+    'metadata' => [
+        'name' => 'pfsense-controller-persistence'
+    ],
+    'data' => null,
+];
+$response = $kubernetesClient->request('/api/v1/namespaces/kube-system/configmaps', 'POST', [], $data);
+
+
+//PATCH
+$data = [
+    'kind' => 'ConfigMap',
+    'metadata' => [
+        'name' => 'pfsense-controller-persistence'
+    ],
+    'data' => [
+        $key => json_encode($value),
+    ],
+];
+$response = $this->getKubernetesClient()->request('/api/v1/namespaces/kube-system/configmaps/pfsense-controller-persistence', 'PATCH', [], $data);
+
+
 
 $watches = new KubernetesClient\WatchCollection();
 
-$callback = function($watch, $data) use (&$state) {
+$callback = function($data, $watch) use (&$state) {
     echo date("c") . ': ' . $data['object']['kind'] . ' ' . $data['object']['metadata']['name'] . ' ' . $data['type'] . ' - ' . $data['object']['metadata']['resourceVersion'] . "\n";
 };
 $params = [
@@ -51,7 +75,7 @@ $watches->addWatch($watch);
 $params = [
     'resourceVersion' => $state['metallb']['config']['metadata']['resourceVersion'],
 ];
-$callback = function($watch, $data) use (&$state) {
+$callback = function($data, $watch) use (&$state) {
     echo date("c") . ': ' . $data['object']['kind'] . ' ' . $data['object']['metadata']['name'] . ' ' . $data['type'] . ' - ' . $data['object']['metadata']['resourceVersion'] . "\n";
 };
 $watch = $client->createWatch('/api/v1/watch/namespaces/metallb-system/configmaps/config', $params, $callback);

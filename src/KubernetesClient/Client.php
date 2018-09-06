@@ -43,7 +43,6 @@ class Client
     {
         $opts = array(
             'http'=>array(
-                'method'=>"GET",
                 'ignore_errors' => true,
                 'header' => "Accept: application/json, */*\r\nContent-Encoding: gzip\r\n"
             ),
@@ -74,7 +73,7 @@ class Client
         $o = array_merge_recursive($this->getContextOptions(), $opts);
         $o['http']['method'] = $verb;
 
-        if ($verb == 'PATCH') {
+        if (substr($verb, 0, 5) == 'PATCH') {
             /**
              * https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#patch-operations
              * https://github.com/kubernetes/community/blob/master/contributors/devel/strategic-merge-patch.md
@@ -83,7 +82,19 @@ class Client
              * Content-Type: application/merge-patch+json
              * Content-Type: application/strategic-merge-patch+json
              */
-            $o['http']['header'] .= "Content-Type: application/merge-patch+json\r\n";
+            switch ($verb) {
+                case 'PATCH-JSON':
+                    $o['http']['header'] .= "Content-Type: application/json-patch+json\r\n";
+                    break;
+                case 'PATCH-STRATEGIC-MERGE':
+                    $o['http']['header'] .= "Content-Type: application/strategic-merge-patch+json\r\n";
+                    break;
+                case 'PATCH':
+                case 'PATCH-MERGE':
+                default:
+                    $o['http']['header'] .= "Content-Type: application/merge-patch+json\r\n";
+                    break;
+            }
         } else {
             $o['http']['header'] .= "Content-Type: application/json\r\n";
         }

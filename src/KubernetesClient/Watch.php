@@ -11,6 +11,16 @@ namespace KubernetesClient;
 class Watch
 {
     /**
+     * Default streamTimeout
+     */
+    const DEFAULT_STREAM_TIMEOUT = (int) (100 * 1000);
+
+    /**
+     * Default streamReadLength
+     */
+    const DEFAULT_STREAM_READ_LENGTH = (int) 8192;
+
+    /**
      * Client instance;
      *
      * @var Client
@@ -65,6 +75,20 @@ class Watch
      * @var array
      */
     private $params = [];
+
+    /**
+     * Stream timeout in microseconds
+     *
+     * @var int
+     */
+    private $streamTimeout = self::DEFAULT_STREAM_TIMEOUT;
+
+    /**
+     * Stream read length (bytes)
+     *
+     * @var int
+     */
+    private $streamReadLength = self::DEFAULT_STREAM_READ_LENGTH;
 
     /**
      * Watch constructor.
@@ -131,7 +155,7 @@ class Watch
                 }
             }
             $handle = fopen($url, 'r', false, $this->getClient()->getStreamContext());
-            stream_set_timeout($handle, 0, (100 * 1000));
+            stream_set_timeout($handle, 0, $this->getStreamTimeout());
             $this->handle = $handle;
         }
 
@@ -160,6 +184,65 @@ class Watch
         }
 
         return fclose($this->handle);
+    }
+
+    /**
+     * Set streamTimeout (microseconds)
+     *
+     * @param $value
+     */
+    public function setStreamTimeout($value)
+    {
+        if ($value < 1) {
+            $value = self::DEFAULT_STREAM_TIMEOUT;
+        }
+
+        $this->streamTimeout = (int) $value;
+        if ($this->handle !== null) {
+            stream_set_timeout($this->handle, 0, $this->getStreamTimeout());
+        }
+    }
+
+    /**
+     * Get streamTimeout (microseconds)
+     *
+     * @return float|int
+     */
+    public function getStreamTimeout()
+    {
+        if ($this->streamTimeout < 1) {
+            $this->setStreamTimeout(self::DEFAULT_STREAM_TIMEOUT);
+        }
+
+        return $this->streamTimeout;
+    }
+
+    /**
+     * Set streamReadLength (bytes)
+     *
+     * @param $value
+     */
+    public function setStreamReadLength($value)
+    {
+        if ($value < 1) {
+            $value = self::DEFAULT_STREAM_READ_LENGTH;
+        }
+
+        $this->streamReadLength = (int) $value;
+    }
+
+    /**
+     * Get streamReadLength (bytes)
+     *
+     * @return int
+     */
+    public function getStreamReadLength()
+    {
+        if ($this->streamReadLength < 1) {
+            $this->setStreamReadLength(self::DEFAULT_STREAM_READ_LENGTH);
+        }
+
+        return $this->streamReadLength;
     }
 
     /**
@@ -211,7 +294,7 @@ class Watch
                 }
             }
 
-            $data = fread($handle, 8192);
+            $data = fread($handle, $this->getStreamReadLength());
             if ($data === false) {
                 throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
             }
@@ -229,7 +312,7 @@ class Watch
                     if (!empty($parts[$x])) {
                         try {
                             $response = json_decode($parts[$x], true);
-                            ($this->callback)($this, $response);
+                            ($this->callback)($response, $this);
                             $this->setResourceVersion($response['object']['metadata']['resourceVersion']);
 
                             if ($this->getStop()) {
@@ -278,7 +361,7 @@ class Watch
                 }
             }
 
-            $data = fread($handle, 8192);
+            $data = fread($handle, $this->getStreamReadLength());
             if ($data === false) {
                 throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
             }
