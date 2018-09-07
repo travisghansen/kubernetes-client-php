@@ -8,7 +8,7 @@ namespace KubernetesClient;
  * Class Watch
  * @package KubernetesClient
  */
-class Watch
+class Watch implements WatchIteratorInterface
 {
     /**
      * Default streamTimeout

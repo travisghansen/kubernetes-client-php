@@ -8,7 +8,7 @@ namespace KubernetesClient;
  * Class WatchCollection
  * @package KubernetesClient
  */
-class WatchCollection
+class WatchCollection implements WatchIteratorInterface
 {
     /**
      * Watches
@@ -89,12 +89,8 @@ class WatchCollection
      * @param int $cycles
      * @throws \Exception
      */
-    public function startSync($cycles = 1)
+    public function start($cycles = 0)
     {
-        if ($cycles < 1) {
-            throw new \Exception('cycles must be greater than 0 for synchronous processing');
-        }
-
         foreach ($this->getWatches() as $watch) {
             $watch->start($cycles);
         }
@@ -103,10 +99,12 @@ class WatchCollection
     /**
      * Generator interface for looping
      *
+     * @param int $cycles
      * @return \Generator|void
      */
-    public function stream()
+    public function stream($cycles = 0)
     {
+        $i_cycles = 0;
         while (true) {
             if ($this->getStop()) {
                 $this->internal_stop();
@@ -124,6 +122,10 @@ class WatchCollection
                     }
                     yield $message;
                 }
+            }
+            $i_cycles++;
+            if ($cycles > 0 && $cycles >= $i_cycles) {
+                return;
             }
         }
     }

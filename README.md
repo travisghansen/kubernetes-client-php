@@ -1,102 +1,18 @@
 # Intro
 No nonsense PHP client for the Kubernetes API.  It supports standard `REST` calls along with `watch`es for a continuous
-feed of data.
+feed of data.  Because no models are used it's usable with `CRD`s and other functionality/endpoints that may not be
+built-in.
 
 # Example
-```php
-<?php
-
-require_once 'vendor/autoload.php';
-
-declare(ticks = 1);
-pcntl_signal(SIGINT, function() {
-    exit(0);
-});
-
-
-$config = KubernetesClient\Config::BuildConfigFromFile();
-$client = new KubernetesClient\Client($config);
-
-// shared state for closures
-$state = [];
-$response = $client->request('/api/v1/namespaces/metallb-system/configmaps/config');
-$state['metallb']['config'] = $response;
-
-$response = $client->request('/api/v1/nodes');
-$state['nodes']['list'] = $response;
-
-//POST
-$data = [
-    'kind' => 'ConfigMap',
-    'metadata' => [
-        'name' => 'pfsense-controller-persistence'
-    ],
-    'data' => null,
-];
-$response = $kubernetesClient->request('/api/v1/namespaces/kube-system/configmaps', 'POST', [], $data);
-
-
-//PATCH
-$data = [
-    'kind' => 'ConfigMap',
-    'metadata' => [
-        'name' => 'pfsense-controller-persistence'
-    ],
-    'data' => [
-        $key => json_encode($value),
-    ],
-];
-$response = $this->getKubernetesClient()->request('/api/v1/namespaces/kube-system/configmaps/pfsense-controller-persistence', 'PATCH', [], $data);
-
-
-
-$watches = new KubernetesClient\WatchCollection();
-
-$callback = function($data, $watch) use (&$state) {
-    echo date("c") . ': ' . $data['object']['kind'] . ' ' . $data['object']['metadata']['name'] . ' ' . $data['type'] . ' - ' . $data['object']['metadata']['resourceVersion'] . "\n";
-};
-$params = [
-    'watch' => '1',
-    //'timeoutSeconds' => 10,
-    'resourceVersion' => $state['nodes']['list']['metadata']['resourceVersion'],
-];
-$watch = $client->createWatch('/api/v1/nodes?', $params, $callback);
-$watches->addWatch($watch);
-
-// closure style, blocking
-//$watch->start();
-
-// generator style, blocking
-//foreach($watch->stream() as $event) {
-//    var_dump($event);
-//    $watch->stop();
-//}
-
-$params = [
-    'resourceVersion' => $state['metallb']['config']['metadata']['resourceVersion'],
-];
-$callback = function($data, $watch) use (&$state) {
-    echo date("c") . ': ' . $data['object']['kind'] . ' ' . $data['object']['metadata']['name'] . ' ' . $data['type'] . ' - ' . $data['object']['metadata']['resourceVersion'] . "\n";
-};
-$watch = $client->createWatch('/api/v1/watch/namespaces/metallb-system/configmaps/config', $params, $callback);
-$watches->addWatch($watch);
-
-// generator version on set of watches
-//foreach ($watches->stream() as $event) {
-//    var_dump($event);
-//    $watches->stop();//move on
-//}
-
-while (true) {
-    $watches->startSync();
-    usleep(100 * 1000);
-}
-```
+See [sample.php](sample.php)
 
 # Watches
-Watches should be create with closure with the following signature:
+Watches can (will) stay connected indefinitely, automatically reconnecting after server-side timeout.  The client will
+keep track of the most recent `resourceVersion` processed to automatically start where you left off.
+
+Watch callback closures should have the following signature:
 ```
-$callback = function($watch, $event)..
+$callback = function($event, $watch)..
 ```
 Receiving the watch allows access to the client (and any other details on the watch) and also provides an ability to
 stop the watch (break the loop) based off of event logic.
@@ -108,7 +24,7 @@ stop the watch (break the loop) based off of event logic.
 
 # TODO
  * Introduce threads for callbacks?
- * Do codegen on swagger docs to provide and OO interface to requests/responses
+ * Do codegen on swagger docs to provide and OO interface to requests/responses?
 
 # Links
  * https://github.com/swagger-api/swagger-codegen/blob/master/README.md
