@@ -64,6 +64,7 @@ $params = [
     'resourceVersion' => $state['nodes']['list']['metadata']['resourceVersion'],
 ];
 $watch = $client->createWatch('/api/v1/nodes?', $params, $callback);
+//$watch->setStreamReadLength(55);
 
 // blocking (unless timeoutSeconds has been supplied)
 //$watch->start();

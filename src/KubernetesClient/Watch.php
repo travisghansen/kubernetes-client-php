@@ -308,7 +308,7 @@ class Watch implements WatchIteratorInterface
             if ((bool) strstr($this->buffer, "\n")) {
                 $parts = explode("\n", $this->buffer);
                 $parts_count = count($parts);
-                for ($x = 0; $x < $parts_count; $x++) {
+                for ($x = 0; $x < ($parts_count - 1); $x++) {
                     if (!empty($parts[$x])) {
                         try {
                             $response = json_decode($parts[$x], true);
@@ -324,7 +324,7 @@ class Watch implements WatchIteratorInterface
                         }
                     }
                 }
-                $this->buffer = $parts[$parts_count];
+                $this->buffer = $parts[($parts_count - 1)];
             }
 
             $i_cycles++;
@@ -375,7 +375,7 @@ class Watch implements WatchIteratorInterface
             if ((bool) strstr($this->buffer, "\n")) {
                 $parts = explode("\n", $this->buffer);
                 $parts_count = count($parts);
-                for ($x = 0; $x < $parts_count; $x++) {
+                for ($x = 0; $x < ($parts_count - 1); $x++) {
                     if (!empty($parts[$x])) {
                         try {
                             $response = json_decode($parts[$x], true);
@@ -391,7 +391,7 @@ class Watch implements WatchIteratorInterface
                         }
                     }
                 }
-                $this->buffer = $parts[$parts_count];
+                $this->buffer = $parts[($parts_count - 1)];
             }
 
             $i_cycles++;
