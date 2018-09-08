@@ -127,6 +127,7 @@ class Watch implements WatchIteratorInterface
     /**
      * Retrieve (open if necessary) the HTTP connection
      *
+     * @throws \Exception
      * @return bool|resource
      */
     private function getHandle()
@@ -154,7 +155,11 @@ class Watch implements WatchIteratorInterface
                     $url .= '?'.$query;
                 }
             }
-            $handle = fopen($url, 'r', false, $this->getClient()->getStreamContext());
+            $handle = @fopen($url, 'r', false, $this->getClient()->getStreamContext());
+            if ($handle === false) {
+                $e = error_get_last();
+                throw new \Exception($e['message'], $e['type']);
+            }
             stream_set_timeout($handle, 0, $this->getStreamTimeout());
             $this->handle = $handle;
         }

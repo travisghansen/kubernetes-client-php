@@ -109,6 +109,7 @@ class Client
      * @param string $verb
      * @param array $params
      * @param null $data
+     * @throws \Exception
      * @return bool|mixed|string
      */
     public function request($endpoint, $verb = 'GET', $params = [], $data = null)
@@ -131,9 +132,13 @@ class Client
             }
         }
 
-        $fp = fopen($url, 'r', false, $context);
-        $response = stream_get_contents($fp);
-        fclose($fp);
+        $handle = @fopen($url, 'r', false, $context);
+        if ($handle === false) {
+            $e = error_get_last();
+            throw new \Exception($e['message'], $e['type']);
+        }
+        $response = stream_get_contents($handle);
+        fclose($handle);
 
         $response = json_decode($response, true);
 
