@@ -49,6 +49,25 @@ var_dump($response);
 $response = $client->request("/api/v1/namespaces/${configMapNamespace}/configmaps/${configMapName}", 'DELETE');
 var_dump($response);
 
+//LIST (retrieve large responses)
+$params = [
+    'limit' => 1
+];
+$list = $client->createList('/api/v1/nodes', $params);
+
+// get all
+$items = $list->get();
+var_dump($items);
+
+// get 1 page
+$pages = 1;
+$items = $list->get($pages);
+var_dump($items);
+
+// iterate
+foreach ($list->stream() as $item) {
+    var_dump($item);
+}
 
 // shared state for closures
 $state = [];

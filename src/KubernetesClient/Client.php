@@ -159,4 +159,16 @@ class Client
 
         return $watch;
     }
+
+    /**
+     * Create a List for retrieving large lists
+     *
+     * @param $endpoint
+     * @param array $params
+     * @return ResourceList
+     */
+    public function createList($endpoint, $params = [])
+    {
+        return new ResourceList($this, $endpoint, $params);
+    }
 }
