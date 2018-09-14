@@ -104,6 +104,12 @@ class Watch implements WatchIteratorInterface
         $this->endpoint = $endpoint;
         $this->callback = $callback;
         $this->params = $params;
+
+        // cleanse the resourceVersion to prevent usage after initial read
+        if (isset($this->params['resourceVersion'])) {
+            $this->setResourceVersion($this->params['resourceVersion']);
+            unset($this->params['resourceVersion']);
+        }
     }
 
     /**
