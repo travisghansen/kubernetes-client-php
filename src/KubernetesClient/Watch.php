@@ -257,7 +257,7 @@ class Watch implements WatchIteratorInterface
      */
     private function setResourceVersion($value)
     {
-        if ($value > $this->resourceVersion) {
+        if ($value > $this->resourceVersion || $value === null) {
             $this->resourceVersion = $value;
         }
     }
@@ -317,6 +317,13 @@ class Watch implements WatchIteratorInterface
                     if (!empty($parts[$x])) {
                         try {
                             $response = json_decode($parts[$x], true);
+                            $code = $this->preProcessResponse($response);
+                            if ($code != 0) {
+                                $this->resetHandle();
+                                $this->resourceVersion = null;
+                                $handle = $this->getHandle();
+                                goto end;
+                            }
                             ($this->callback)($response, $this);
                             $this->setResourceVersion($response['object']['metadata']['resourceVersion']);
 
@@ -332,6 +339,7 @@ class Watch implements WatchIteratorInterface
                 $this->buffer = $parts[($parts_count - 1)];
             }
 
+            end:
             $i_cycles++;
             if ($cycles > 0 && $cycles >= $i_cycles) {
                 return;
@@ -384,6 +392,13 @@ class Watch implements WatchIteratorInterface
                     if (!empty($parts[$x])) {
                         try {
                             $response = json_decode($parts[$x], true);
+                            $code = $this->preProcessResponse($response);
+                            if ($code != 0) {
+                                $this->resetHandle();
+                                $this->resourceVersion = null;
+                                $handle = $this->getHandle();
+                                goto end;
+                            }
                             $this->setResourceVersion($response['object']['metadata']['resourceVersion']);
                             yield $response;
 
@@ -399,11 +414,26 @@ class Watch implements WatchIteratorInterface
                 $this->buffer = $parts[($parts_count - 1)];
             }
 
+            end:
             $i_cycles++;
             if ($cycles > 0 && $cycles >= $i_cycles) {
                 return;
             }
         }
+    }
+
+    private function preProcessResponse($response)
+    {
+        if (!is_array($response)) {
+            return 1;
+        }
+
+        // resourceVersion is too old
+        if ($response['type'] == 'Error' && $response['object']['code'] == 410) {
+            return 1;
+        }
+
+        return 0;
     }
 
     /**
