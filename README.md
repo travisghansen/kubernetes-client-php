@@ -22,11 +22,20 @@ stop the watch (break the loop) based off of event logic.
  * `GET /apis/batch/v1beta1/watch/cronjobs` (resource type cluster-wide)
  * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#watch
 
-# TODO
+# Development
+Note on `resourceVersion` per the doc:
+> When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to
+> changes from the beginning of history. When specified for list: - if unset, then the result is returned from remote
+> storage based on quorum-read flag; - if it's 0, then we simply return what we currently have in cache, no guarantee; -
+> if set to non zero, then the result is at least as fresh as given rv.
+
+Note that it's only changes **after** the version.
+
+## TODO
  * Introduce threads for callbacks?
  * Do codegen on swagger docs to provide and OO interface to requests/responses?
 
-# Links
+## Links
  * https://github.com/swagger-api/swagger-codegen/blob/master/README.md
  * https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#api-conventions
  * https://kubernetes.io/docs/reference/using-api/client-libraries/#community-maintained-client-libraries

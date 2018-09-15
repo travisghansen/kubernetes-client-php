@@ -70,6 +70,15 @@ class Watch implements WatchIteratorInterface
     private $resourceVersion = null;
 
     /**
+     * Used to keep track of the very last resourceVersion successfully received by the watcch.  This is used to
+     * prevent re-triggering ADDED events for objects that change very infrequently that either re-connect due to
+     * timeout or otherwise.  ie: Do NOT trigger 'ADDED' event twice for the same resource of the same version.
+     *
+     * @var string
+     */
+    private $resourceVersionLastSuccess = null;
+
+    /**
      * URL params for the HTTP request
      *
      * @var array
@@ -108,6 +117,7 @@ class Watch implements WatchIteratorInterface
         // cleanse the resourceVersion to prevent usage after initial read
         if (isset($this->params['resourceVersion'])) {
             $this->setResourceVersion($this->params['resourceVersion']);
+            $this->setResourceVersionLastSuccess($this->params['resourceVersion']);
             unset($this->params['resourceVersion']);
         }
     }
@@ -279,6 +289,28 @@ class Watch implements WatchIteratorInterface
     }
 
     /**
+     * Set resourceVersionLastSuccess
+     *
+     * @param $value
+     */
+    private function setResourceVersionLastSuccess($value)
+    {
+        if ($value > $this->resourceVersionLastSuccess) {
+            $this->resourceVersionLastSuccess = $value;
+        }
+    }
+
+    /**
+     * Get resourceVersionLastSuccess
+     *
+     * @return string
+     */
+    private function getResourceVersionLastSuccess()
+    {
+        return $this->resourceVersionLastSuccess;
+    }
+
+    /**
      * Read and process event messages (closure/callback)
      *
      * @param int $cycles
@@ -330,8 +362,13 @@ class Watch implements WatchIteratorInterface
                                 $handle = $this->getHandle();
                                 goto end;
                             }
-                            ($this->callback)($response, $this);
+
+                            if ($response['object']['metadata']['resourceVersion'] > $this->getResourceVersionLastSuccess()) {
+                                ($this->callback)($response, $this);
+                            }
+
                             $this->setResourceVersion($response['object']['metadata']['resourceVersion']);
+                            $this->setResourceVersionLastSuccess($response['object']['metadata']['resourceVersion']);
 
                             if ($this->getStop()) {
                                 $this->internal_stop();
@@ -405,8 +442,15 @@ class Watch implements WatchIteratorInterface
                                 $handle = $this->getHandle();
                                 goto end;
                             }
+
+                            $yield = ($response['object']['metadata']['resourceVersion'] > $this->getResourceVersionLastSuccess());
+
                             $this->setResourceVersion($response['object']['metadata']['resourceVersion']);
-                            yield $response;
+                            $this->setResourceVersionLastSuccess($response['object']['metadata']['resourceVersion']);
+
+                            if ($yield) {
+                                yield $response;
+                            }
 
                             if ($this->getStop()) {
                                 $this->internal_stop();
