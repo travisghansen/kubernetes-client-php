@@ -435,7 +435,7 @@ class Watch implements WatchIteratorInterface
         }
 
         // resourceVersion is too old
-        if ($response['type'] == 'Error' && $response['object']['code'] == 410) {
+        if ($response['type'] == 'ERROR' && $response['object']['code'] == 410) {
             return 1;
         }
 
