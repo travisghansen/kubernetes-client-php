@@ -4,7 +4,7 @@
 require_once 'vendor/autoload.php';
 
 declare(ticks = 1);
-pcntl_signal(SIGINT, function() {
+pcntl_signal(SIGINT, function () {
     exit(0);
 });
 
@@ -74,7 +74,7 @@ $state = [];
 $response = $client->request('/api/v1/nodes');
 $state['nodes']['list'] = $response;
 
-$callback = function($event, $watch) use (&$state) {
+$callback = function ($event, $watch) use (&$state) {
     echo date("c") . ': ' . $event['object']['kind'] . ' ' . $event['object']['metadata']['name'] . ' ' . $event['type'] . ' - ' . $event['object']['metadata']['resourceVersion'] . "\n";
 };
 $params = [
@@ -103,7 +103,7 @@ while (true) {
 
 // generator style, blocking
 $i = 0;
-foreach($watch->stream() as $event) {
+foreach ($watch->stream() as $event) {
     echo date("c") . ': ' . $event['object']['kind'] . ' ' . $event['object']['metadata']['name'] . ' ' . $event['type'] . ' - ' . $event['object']['metadata']['resourceVersion'] . "\n";
     //$watch->stop();
     $i++;
@@ -112,4 +112,3 @@ foreach($watch->stream() as $event) {
         break;
     }
 }
-
