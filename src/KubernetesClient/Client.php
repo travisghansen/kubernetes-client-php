@@ -2,8 +2,6 @@
 
 namespace KubernetesClient;
 
-use PhpCsFixer\Utils;
-
 /**
  * Client class for interacting with a kubernetes API.  Primary interface should be:
  *  - ->request()
