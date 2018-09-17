@@ -6,6 +6,7 @@ namespace KubernetesClient;
  * Client class for interacting with a kubernetes API.  Primary interface should be:
  *  - ->request()
  *  - ->createWatch()
+ *  - ->createList()
  *
  * Class Client
  * @package KubernetesClient
