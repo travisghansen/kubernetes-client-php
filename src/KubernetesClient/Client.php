@@ -2,6 +2,8 @@
 
 namespace KubernetesClient;
 
+use PhpCsFixer\Utils;
+
 /**
  * Client class for interacting with a kubernetes API.  Primary interface should be:
  *  - ->request()
@@ -46,12 +48,19 @@ class Client
                 'ignore_errors' => true,
                 'header' => "Accept: application/json, */*\r\nContent-Encoding: gzip\r\n"
             ),
-            'ssl'=>array(
-                'cafile' => $this->config->getCertificateAuthorityPath(),
-                'local_cert' => $this->config->getClientCertificatePath(),
-                'local_pk' => $this->config->getClientKeyPath(),
-            )
         );
+
+        if (!empty($this->config->getCertificateAuthorityPath())) {
+            $opts['ssl']['cafile'] = $this->config->getCertificateAuthorityPath();
+        }
+
+        if (!empty($this->config->getClientCertificatePath())) {
+            $opts['ssl']['local_cert'] = $this->config->getClientCertificatePath();
+        }
+
+        if (!empty($this->config->getClientKeyPath())) {
+            $opts['ssl']['local_pk'] = $this->config->getClientKeyPath();
+        }
 
         $token = $this->config->getToken();
         if (!empty($token)) {
@@ -132,7 +141,7 @@ class Client
             }
         }
 
-        $handle = @fopen($url, 'r', false, $context);
+        $handle = fopen($url, 'r', false, $context);
         if ($handle === false) {
             $e = error_get_last();
             throw new \Exception($e['message'], $e['type']);
