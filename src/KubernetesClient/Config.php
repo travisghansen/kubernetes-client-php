@@ -147,6 +147,12 @@ class Config
             $config->setClientKeyPath($path);
         }
 
+        // Handles the case where you have a kubeconfig for a service account
+        if (!empty($user['token'])) {
+            $path = self::writeTempFile(base64_decode($user['token']));
+            $config->setToken($path);
+        }
+
         return $config;
     }
 
