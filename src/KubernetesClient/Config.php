@@ -147,6 +147,11 @@ class Config
             $config->setClientKeyPath($path);
         }
 
+        // Handles the case where you have a kubeconfig for a service account
+        if (!empty($user['token'])) {
+            $config->setToken($user['token']);
+        }
+
         return $config;
     }
 
