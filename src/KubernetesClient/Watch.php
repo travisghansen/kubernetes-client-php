@@ -21,6 +21,11 @@ class Watch implements WatchIteratorInterface
     const DEFAULT_STREAM_READ_LENGTH = 8192;
 
     /**
+     * Default deadPeerDetectionTimeout
+     */
+    const DEFAULT_DEAD_PEER_DETECTION_TIMEOUT = 600;
+
+    /**
      * Client instance;
      *
      * @var Client
@@ -98,6 +103,28 @@ class Watch implements WatchIteratorInterface
      * @var int
      */
     private $streamReadLength = self::DEFAULT_STREAM_READ_LENGTH;
+
+    /**
+     * Time after which no data has been received that the socket connection is reestablished
+     *
+     * @var int
+     */
+    private $deadPeerDetectionTimeout = self::DEFAULT_DEAD_PEER_DETECTION_TIMEOUT;
+
+    /**
+     * Used to keep track of the very last time data was successfully read from the socket.
+     * If the time + deadPeerDetectionTimeout is < 'now' then the socket/connection is re-established
+     *
+     * @var int
+     */
+    private $lastBytesReadTimestamp = 0;
+
+    /**
+     * Used to track when a connection is made
+     *
+     * @var int
+     */
+    private $handleStartTimestamp = 0;
 
     /**
      * Watch constructor.
@@ -178,6 +205,7 @@ class Watch implements WatchIteratorInterface
             }
             stream_set_timeout($handle, 0, $this->getStreamTimeout());
             $this->handle = $handle;
+            $this->setHandleStartTimestamp(time());
         }
 
         return $this->handle;
@@ -267,6 +295,46 @@ class Watch implements WatchIteratorInterface
     }
 
     /**
+     * Set deadPeerDetectionTimeout (seconds)
+     *
+     * @param $value
+     */
+    public function setDeadPeerDetectionTimeout($value)
+    {
+        $this->deadPeerDetectionTimeout = (int) $value;
+    }
+
+    /**
+     * Get deadPeerDetectionTimeout (seconds)
+     *
+     * @return int
+     */
+    public function getDeadPeerDetectionTimeout()
+    {
+        return $this->deadPeerDetectionTimeout;
+    }
+
+    /**
+     * Get handleStartTimestamp
+     *
+     * @return int
+     */
+    private function getHandleStartTimestamp()
+    {
+        return $this->handleStartTimestamp;
+    }
+
+    /**
+     * Set handleStartTimestamp
+     *
+     * @param $value
+     */
+    private function setHandleStartTimestamp($value)
+    {
+        $this->handleStartTimestamp = (int) $value;
+    }
+
+    /**
      * Set resourceVersion
      *
      * @param $value
@@ -311,6 +379,26 @@ class Watch implements WatchIteratorInterface
     }
 
     /**
+     * Set lastBytesReadTimestamp
+     *
+     * @param $value
+     */
+    private function setLastBytesReadTimestamp($value)
+    {
+        $this->lastBytesReadTimestamp = (int) $value;
+    }
+
+    /**
+     * Get lastBytesReadTimestamp
+     *
+     * @return int
+     */
+    private function getLastBytesReadTimestamp()
+    {
+        return $this->lastBytesReadTimestamp;
+    }
+
+    /**
      * Read and process event messages (closure/callback)
      *
      * @param int $cycles
@@ -324,6 +412,16 @@ class Watch implements WatchIteratorInterface
             if ($this->getStop()) {
                 $this->internal_stop();
                 return;
+            }
+
+            // detect dead peers
+            $now = time();
+            if ($this->getDeadPeerDetectionTimeout() > 0 &&
+                $now >= ($this->getHandleStartTimestamp() + $this->getDeadPeerDetectionTimeout()) &&
+                $now >= ($this->getLastBytesReadTimestamp() + $this->getDeadPeerDetectionTimeout())
+            ) {
+                $this->resetHandle();
+                $handle = $this->getHandle();
             }
 
             //$meta = stream_get_meta_data($handle);
@@ -341,6 +439,11 @@ class Watch implements WatchIteratorInterface
             if ($data === false) {
                 throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
             }
+
+            if (strlen($data) > 0) {
+                $this->setLastBytesReadTimestamp(time());
+            }
+
             $this->buffer .= $data;
 
             //break immediately if nothing is on the buffer
@@ -395,6 +498,7 @@ class Watch implements WatchIteratorInterface
      *
      * @param int $cycles
      * @throws \Exception
+     * @return void
      */
     private function internal_generator($cycles = 0)
     {
@@ -404,6 +508,16 @@ class Watch implements WatchIteratorInterface
             if ($this->getStop()) {
                 $this->internal_stop();
                 return;
+            }
+
+            // detect dead peers
+            $now = time();
+            if ($this->getDeadPeerDetectionTimeout() > 0 &&
+                $now >= ($this->getHandleStartTimestamp() + $this->getDeadPeerDetectionTimeout()) &&
+                $now >= ($this->getLastBytesReadTimestamp() + $this->getDeadPeerDetectionTimeout())
+            ) {
+                $this->resetHandle();
+                $handle = $this->getHandle();
             }
 
             //$meta = stream_get_meta_data($handle);
@@ -421,6 +535,11 @@ class Watch implements WatchIteratorInterface
             if ($data === false) {
                 throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
             }
+
+            if (strlen($data) > 0) {
+                $this->setLastBytesReadTimestamp(time());
+            }
+
             $this->buffer .= $data;
 
             //break immediately if nothing is on the buffer
@@ -539,6 +658,7 @@ class Watch implements WatchIteratorInterface
      *
      * @param int $cycles
      * @throws \Exception
+     * @return void
      */
     public function stream($cycles = 0)
     {
