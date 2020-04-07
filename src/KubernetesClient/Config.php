@@ -419,7 +419,7 @@ class Config
     {
         if ($this->getIsAuthProvider()) {
             // set token if expired
-            if ($this->getExpiry() && $this->getExpiry() >= time()) {
+            if ($this->getExpiry() && time() >= $this->getExpiry()) {
                 $this->getAuthProviderToken();
             }
 
