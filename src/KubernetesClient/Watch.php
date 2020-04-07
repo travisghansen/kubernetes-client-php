@@ -13,7 +13,7 @@ class Watch implements WatchIteratorInterface
     /**
      * Default streamTimeout
      */
-    const DEFAULT_STREAM_TIMEOUT = 100000;
+    const DEFAULT_STREAM_TIMEOUT = 100000; // .1 seconds
 
     /**
      * Default streamReadLength
@@ -437,7 +437,12 @@ class Watch implements WatchIteratorInterface
 
             $data = fread($handle, $this->getStreamReadLength());
             if ($data === false) {
-                throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
+                // PHP 7.4 now returns false when the timeout is hit
+                if (version_compare(PHP_VERSION, '7.4', 'ge')) {
+                    $data = "";
+                } else {
+                    throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
+                }
             }
 
             if (strlen($data) > 0) {
@@ -533,7 +538,12 @@ class Watch implements WatchIteratorInterface
 
             $data = fread($handle, $this->getStreamReadLength());
             if ($data === false) {
-                throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
+                // PHP 7.4 now returns false when the timeout is hit
+                if (version_compare(PHP_VERSION, '7.4', 'ge')) {
+                    $data = "";
+                } else {
+                    throw new \Exception('Failed to read bytes from stream: ' . $this->getClient()->getConfig()->getServer());
+                }
             }
 
             if (strlen($data) > 0) {

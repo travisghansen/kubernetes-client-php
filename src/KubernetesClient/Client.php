@@ -2,6 +2,8 @@
 
 namespace KubernetesClient;
 
+use Flow\JSONPath\JSONPathException;
+
 /**
  * Client class for interacting with a kubernetes API.  Primary interface should be:
  *  - ->request()
@@ -39,6 +41,8 @@ class Client
      * Get common options to be used for the stream context
      *
      * @return array
+     * @throws \Error
+     * @throws JSONPathException
      */
     private function getContextOptions()
     {
@@ -75,6 +79,8 @@ class Client
      * @param string $verb
      * @param array $opts
      * @return resource
+     * @throws \Error
+     * @throws JSONPathException
      */
     public function getStreamContext($verb = 'GET', $opts = [])
     {
@@ -163,9 +169,7 @@ class Client
      */
     public function createWatch($endpoint, $params = [], \Closure $callback)
     {
-        $watch = new Watch($this, $endpoint, $params, $callback);
-
-        return $watch;
+        return new Watch($this, $endpoint, $params, $callback);
     }
 
     /**

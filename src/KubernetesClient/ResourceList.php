@@ -89,7 +89,7 @@ class ResourceList
         $list = $this->getClient()->request($endpoint, 'GET', $params);
 
         $i = 1;
-        while ($list['metadata']['continue']) {
+        while (array_key_exists('continue', $list['metadata']) && $list['metadata']['continue']) {
             if ($pages > 0 && $pages >= $i) {
                 return $list;
             }
@@ -119,7 +119,7 @@ class ResourceList
             yield $item;
         }
 
-        while ($list['metadata']['continue']) {
+        while (array_key_exists('continue', $list['metadata']) && $list['metadata']['continue']) {
             $params['continue'] = $list['metadata']['continue'];
             $list = $this->getClient()->request($endpoint, 'GET', $params);
             foreach ($list['items'] as $item) {
