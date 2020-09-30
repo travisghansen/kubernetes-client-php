@@ -23,6 +23,13 @@ class Config
     private static $tempFiles = [];
 
     /**
+     * Path to the operative config file
+     *
+     * @var string
+     */
+    private $path;
+
+    /**
      * Server URI (ie: https://host)
      *
      * @var string
@@ -98,6 +105,13 @@ class Config
      * @var bool
      */
     private $isAuthProvider = false;
+
+    /**
+     * If the user auth data is generated via an exec provider
+     *
+     * @var bool
+     */
+    private $isExecProvider = false;
 
     /**
      * Data from parsed config file
@@ -204,6 +218,7 @@ class Config
         }
 
         $config = new Config();
+        $config->setPath($path);
         $config->setParsedConfigFile($yaml);
         $config->useContext($contextName);
 
@@ -281,8 +296,16 @@ class Config
             $this->setToken($user['token']);
         }
 
+        // should never have both auth-provider and exec at the same time
+
         if (!empty($user['auth-provider'])) {
             $this->setIsAuthProvider(true);
+        }
+
+        if (!empty($user['exec'])) {
+            $this->setIsExecProvider(true);
+            // we pre-emptively invoke this in this case
+            $this->getExecProviderAuth();
         }
     }
 
@@ -297,6 +320,31 @@ class Config
         $this->setExpiry(null);
         $this->setToken(null);
         $this->setIsAuthProvider(false);
+        $this->setIsExecProvider(false);
+    }
+
+    /**
+     * Set path
+     *
+     * @param $path
+     */
+    public function setPath($path)
+    {
+        if (!empty($path)) {
+            $path = realpath(($path));
+        }
+
+        $this->path = $path;
+    }
+
+    /**
+     * Get path
+     *
+     * @return string
+     */
+    public function getPath()
+    {
+        return $this->path;
     }
 
     /**
@@ -429,6 +477,14 @@ class Config
             }
         }
 
+        // only do this if token is present to begin with
+        if ($this->getIsExecProvider() && !empty($this->token)) {
+            // set token if expired
+            if ($this->getExpiry() && time() >= $this->getExpiry()) {
+                $this->getExecProviderAuth();
+            }
+        }
+
         return $this->token;
     }
 
@@ -478,6 +534,83 @@ class Config
         if ($token_key) {
             $token_key = '$' . trim($token_key, "{}");
             $this->setToken((new JSONPath($user))->find($token_key)[0]);
+        }
+    }
+
+    /**
+     * @link https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins
+     * @link https://banzaicloud.com/blog/kubeconfig-security/#exec-helper
+     *
+     * Set the auth data using the exec provider
+     */
+    protected function getExecProviderAuth()
+    {
+        $user = $this->getUser();
+        $path = $this->getPath();
+
+        $command = $user['exec']['command'];
+
+        // relative commands should be executed relative to the directory holding the config file
+        if (substr($command, 0, 1) == ".") {
+            $dir = dirname($path);
+            $command = $dir . substr($command, 1);
+        }
+
+        // add args
+        if (!empty($user['exec']['args'])) {
+            foreach ($user['exec']['args'] as $arg) {
+                $command .= " " . $arg;
+            }
+        }
+
+        // set env
+        // beware this sets the env var for the whole process indefinitely
+        if (!empty($user['exec']['env'])) {
+            foreach ($user['exec']['env'] as $env) {
+                putenv("${env['name']}=${env['value']}");
+            }
+        }
+
+        // execute command and store output
+        $output = [];
+        $exit_code = null;
+        exec($command, $output, $exit_code);
+        $output = implode("\n", $output);
+
+        if ($exit_code !== 0) {
+            throw new \Error("error executing access token command \"${command}\": ${output}");
+        } else {
+            $output = json_decode($output, true);
+        }
+
+        if (!is_array($output)) {
+            throw new \Error("error retrieving token: auth exec failed to return valid data");
+        }
+
+        if ($output["kind"] != "ExecCredential") {
+            throw new \Error("error retrieving auth: auth exec failed to return valid data");
+        }
+
+        if ($output['apiVersion'] != 'client.authentication.k8s.io/v1beta1') {
+            throw new \Error("error retrieving auth: auth exec unsupported apiVersion");
+        }
+
+        if (!empty($output['status']['clientCertificateData'])) {
+            $path = self::writeTempFile($output['status']['clientCertificateData']);
+            $this->setClientCertificatePath($path);
+        }
+
+        if (!empty($output['status']['clientKeyData'])) {
+            $path = self::writeTempFile($output['status']['clientKeyData']);
+            $this->setClientKeyPath($path);
+        }
+
+        if (!empty($output['status']['expirationTimestamp'])) {
+            $this->setExpiry($output['status']['expirationTimestamp']);
+        }
+
+        if (!empty($output['status']['token'])) {
+            $this->setToken($output['status']['token']);
         }
     }
 
@@ -585,6 +718,26 @@ class Config
     public function getIsAuthProvider()
     {
         return $this->isAuthProvider;
+    }
+
+    /**
+     * Set if user credentials use exec provider
+     *
+     * @param $v bool
+     */
+    public function setIsExecProvider($v)
+    {
+        $this->isExecProvider = $v;
+    }
+
+    /**
+     * Get if user credentials use exec provider
+     *
+     * @return bool
+     */
+    public function getIsExecProvider()
+    {
+        return $this->isExecProvider;
     }
 
     /**
