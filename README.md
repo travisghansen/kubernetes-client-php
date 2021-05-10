@@ -22,6 +22,10 @@ stop the watch (break the loop) based off of event logic.
  * `GET /apis/batch/v1beta1/watch/cronjobs` (resource type cluster-wide)
  * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#watch
 
+Other notes:
+ - if using labelSelectors triggered events will fire with ADDED / DELETED types if the label is added/delete
+ (ie: ADDED/DELETED do not necessarily equate to literally being added/deleted from k8s)
+
 # Development
 Note on `resourceVersion` per the doc:
 > When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to

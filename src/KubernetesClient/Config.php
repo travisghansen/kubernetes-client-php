@@ -180,7 +180,14 @@ class Config
         $config = new Config();
         $config->setToken(file_get_contents('/var/run/secrets/kubernetes.io/serviceaccount/token'));
         $config->setCertificateAuthorityPath('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt');
-        $config->setServer('https://kubernetes.default.svc');
+
+        if (strlen(getenv('KUBERNETES_SERVICE_HOST')) > 0) {
+            $server = 'https://' . getenv('KUBERNETES_SERVICE_HOST') . ':' . getenv('KUBERNETES_SERVICE_PORT');
+        } else {
+            $server = 'https://kubernetes.default.svc';
+        }
+
+        $config->setServer($server);
 
         return $config;
     }
