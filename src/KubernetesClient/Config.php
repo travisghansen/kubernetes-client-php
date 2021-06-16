@@ -526,7 +526,7 @@ class Config
             $output = json_decode($output, true);
         }
 
-        if (!is_array($output)) {
+        if (!is_array($output) || empty($output)) {
             throw new \Error("error retrieving token: auth provider failed to return valid data");
         }
 
@@ -535,12 +535,12 @@ class Config
 
         if ($expiry_key) {
             $expiry_key = '$' . trim($expiry_key, "{}");
-            $this->setExpiry((new JSONPath($user))->find($expiry_key)[0]);
+            $this->setExpiry((new JSONPath($output))->find($expiry_key)[0]);
         }
 
         if ($token_key) {
             $token_key = '$' . trim($token_key, "{}");
-            $this->setToken((new JSONPath($user))->find($token_key)[0]);
+            $this->setToken((new JSONPath($output))->find($token_key)[0]);
         }
     }
 
