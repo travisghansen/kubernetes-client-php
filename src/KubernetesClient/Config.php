@@ -177,6 +177,10 @@ class Config
      */
     public static function InClusterConfig()
     {
+        if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/token')) {
+            throw new \Exception('Config based off running inside a cluster does not exist.');
+        }
+
         $config = new Config();
         $config->setToken(file_get_contents('/var/run/secrets/kubernetes.io/serviceaccount/token'));
         $config->setCertificateAuthorityPath('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt');
