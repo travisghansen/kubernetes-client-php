@@ -171,6 +171,22 @@ class Config
     }
 
     /**
+     * Create a config based off running inside a cluster if corresponding files found.
+     * Otherwise try to create a config from KUBECONFIG env variable if present or ~/.kube/config.
+     *
+     * @return Config
+     * @throws \Exception If no config can be found at at all the default paths.
+     */
+    public static function AutoConfig()
+    {
+        try {
+            return self::InClusterConfig();
+        } catch (\Exception $e) {
+            return self::BuildConfigFromFile();
+        }
+    }
+
+    /**
      * Create a config based off running inside a cluster
      *
      * @return Config
