@@ -507,12 +507,20 @@ class Config
         $user = $this->getUser();
 
         // gcp, azure, etc
-        //$name = (new JSONPath($user))->find('$.auth-provider.name')[0];
+        //$name = (new JSONPath($user))->find('$.auth-provider.name')->first();
 
         // build command
-        $cmd_path = (new JSONPath($user))->find('$.auth-provider.config.cmd-path')[0];
-        $cmd_args = (new JSONPath($user))->find('$.auth-provider.config.cmd-args')[0];
-        $command = "${cmd_path} ${cmd_args}";
+        $cmd_path = (new JSONPath($user))->find('$.auth-provider.config.cmd-path')->first();
+        $cmd_args = (new JSONPath($user))->find('$.auth-provider.config.cmd-args')->first();
+
+        if (!$cmd_path) {
+            throw new \Error('error finding access token command. No command found.');
+        }
+
+        $command = $cmd_path;
+        if ($cmd_args) {
+            $command .= ' ' . $cmd_args;
+        }
 
         // execute command and store output
         $output = [];
@@ -530,17 +538,25 @@ class Config
             throw new \Error("error retrieving token: auth provider failed to return valid data");
         }
 
-        $expiry_key = (new JSONPath($user))->find('$.auth-provider.config.expiry-key')[0];
-        $token_key = (new JSONPath($user))->find('$.auth-provider.config.token-key')[0];
+        $expiry_key = (new JSONPath($user))->find('$.auth-provider.config.expiry-key')->first();
+        $token_key = (new JSONPath($user))->find('$.auth-provider.config.token-key')->first();
 
         if ($expiry_key) {
             $expiry_key = '$' . trim($expiry_key, "{}");
-            $this->setExpiry((new JSONPath($output))->find($expiry_key)[0]);
+            $expiry = (new JSONPath($output))->find($expiry_key)->first();
+            if ($expiry) {
+                // No expiry should be ok, thus never expiring token
+                $this->setExpiry($expiry);
+            }
         }
 
         if ($token_key) {
             $token_key = '$' . trim($token_key, "{}");
-            $this->setToken((new JSONPath($output))->find($token_key)[0]);
+            $token = (new JSONPath($output))->find($token_key)->first();
+            if (!$token) {
+                throw new \Error(sprintf('error retrieving token: token not found. Searching for key: "%s"', $token_key));
+            }
+            $this->setToken($token);
         }
     }
 
