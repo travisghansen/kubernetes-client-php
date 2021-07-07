@@ -519,7 +519,7 @@ class Config
 
         $command = $cmd_path;
         if ($cmd_args) {
-            $command = "${cmd_path} ${cmd_args}";
+            $command .= ' ' . $cmd_args;
         }
 
         // execute command and store output
