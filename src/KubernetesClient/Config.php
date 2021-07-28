@@ -177,12 +177,12 @@ class Config
      * @return Config
      * @throws \Exception If no config can be found at at all the default paths.
      */
-    public static function AutoConfig()
+    public static function LoadFromDefault()
     {
         try {
-            return self::InClusterConfig();
-        } catch (\Exception $e) {
             return self::BuildConfigFromFile();
+        } catch (\Exception $e) {
+            return self::InClusterConfig();
         }
     }
 
