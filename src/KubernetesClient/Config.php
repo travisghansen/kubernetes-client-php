@@ -174,9 +174,18 @@ class Config
      * Create a config based off running inside a cluster
      *
      * @return Config
+     * @throws \Error
      */
     public static function InClusterConfig()
     {
+        if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/token')) {
+            throw new \Error('Config based off running inside a cluster not available. Token not found.');
+        }
+
+        if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt')) {
+            throw new \Error('Config based off running inside a cluster not available. CA not found.');
+        }
+
         $config = new Config();
         $config->setToken(file_get_contents('/var/run/secrets/kubernetes.io/serviceaccount/token'));
         $config->setCertificateAuthorityPath('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt');
@@ -198,7 +207,7 @@ class Config
      * @param null $path
      * @param null $contextName
      * @return Config
-     * @throws \Exception
+     * @throws \Error
      */
     public static function BuildConfigFromFile($path = null, $contextName = null)
     {
@@ -211,13 +220,21 @@ class Config
         }
 
         if (!file_exists($path)) {
-            throw new \Exception('Config file does not exist: ' . $path);
+            throw new \Error('Config file does not exist: ' . $path);
         }
+
 
         if (function_exists('yaml_parse_file')) {
             $yaml = yaml_parse_file($path);
+            if (false === $yaml) {
+                throw new \Error('Unable to parse YAML.');
+            }
         } else {
-            $yaml = Yaml::parseFile($path);
+            try {
+                $yaml = Yaml::parseFile($path);
+            } catch (\Throwable $th) {
+                throw new \Error('Unable to parse', 0, $th);
+            }
         }
 
         if (empty($contextName)) {
@@ -501,6 +518,7 @@ class Config
      * Set the token and expiry when using an auth provider
      *
      * @throws JSONPathException
+     * @throws Error
      */
     protected function getAuthProviderToken()
     {
