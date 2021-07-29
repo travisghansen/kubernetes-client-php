@@ -124,7 +124,7 @@ class Config
     /**
      * Create a temporary file to be used and destroyed at shutdown
      *
-     * @param $data
+     * @param  $data
      * @return bool|string
      */
     private static function writeTempFile($data)
@@ -154,9 +154,11 @@ class Config
     {
         if ((bool) $path && in_array($path, self::$tempFiles) && file_exists($path)) {
             unlink($path);
-            self::$tempFiles = array_filter(self::$tempFiles, function ($e) use ($path) {
-                return ($e !== $path);
-            });
+            self::$tempFiles = array_filter(
+                self::$tempFiles, function ($e) use ($path) {
+                    return ($e !== $path);
+                }
+            );
         }
     }
 
@@ -167,6 +169,22 @@ class Config
     {
         foreach (self::$tempFiles as $tempFile) {
             self::deleteTempFile($tempFile);
+        }
+    }
+
+    /**
+     * Create a config from KUBECONFIG env variable if present or ~/.kube/config if found.
+     * Otherwise try to create a config based off running inside a cluster if corresponding files found.
+     *
+     * @return Config
+     * @throws \Error If no config can be found at at all the default paths.
+     */
+    public static function LoadFromDefault()
+    {
+        try {
+            return self::BuildConfigFromFile();
+        } catch (\Error $e) {
+            return self::InClusterConfig();
         }
     }
 
@@ -204,8 +222,8 @@ class Config
     /**
      * Create a config from file will auto fallback to KUBECONFIG env variable or ~/.kube/config if no path supplied
      *
-     * @param null $path
-     * @param null $contextName
+     * @param  null $path
+     * @param  null $contextName
      * @return Config
      * @throws \Error
      */
