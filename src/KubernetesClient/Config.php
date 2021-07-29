@@ -190,9 +190,18 @@ class Config
      * Create a config based off running inside a cluster
      *
      * @return Config
+     * @throws \Error
      */
     public static function InClusterConfig()
     {
+        if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/token')) {
+            throw new \Error('Config based off running inside a cluster not available. Token not found.');
+        }
+
+        if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt')) {
+            throw new \Error('Config based off running inside a cluster not available. CA not found.');
+        }
+
         $config = new Config();
         $config->setToken(file_get_contents('/var/run/secrets/kubernetes.io/serviceaccount/token'));
         $config->setCertificateAuthorityPath('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt');
@@ -214,7 +223,7 @@ class Config
      * @param null $path
      * @param null $contextName
      * @return Config
-     * @throws \Exception
+     * @throws \Error
      */
     public static function BuildConfigFromFile($path = null, $contextName = null)
     {
@@ -227,13 +236,21 @@ class Config
         }
 
         if (!file_exists($path)) {
-            throw new \Exception('Config file does not exist: ' . $path);
+            throw new \Error('Config file does not exist: ' . $path);
         }
+
 
         if (function_exists('yaml_parse_file')) {
             $yaml = yaml_parse_file($path);
+            if (false === $yaml) {
+                throw new \Error('Unable to parse YAML.');
+            }
         } else {
-            $yaml = Yaml::parseFile($path);
+            try {
+                $yaml = Yaml::parseFile($path);
+            } catch (\Throwable $th) {
+                throw new \Error('Unable to parse', 0, $th);
+            }
         }
 
         if (empty($contextName)) {
@@ -517,18 +534,27 @@ class Config
      * Set the token and expiry when using an auth provider
      *
      * @throws JSONPathException
+     * @throws Error
      */
     protected function getAuthProviderToken()
     {
         $user = $this->getUser();
 
         // gcp, azure, etc
-        //$name = (new JSONPath($user))->find('$.auth-provider.name')[0];
+        //$name = (new JSONPath($user))->find('$.auth-provider.name')->first();
 
         // build command
-        $cmd_path = (new JSONPath($user))->find('$.auth-provider.config.cmd-path')[0];
-        $cmd_args = (new JSONPath($user))->find('$.auth-provider.config.cmd-args')[0];
-        $command = "${cmd_path} ${cmd_args}";
+        $cmd_path = (new JSONPath($user))->find('$.auth-provider.config.cmd-path')->first();
+        $cmd_args = (new JSONPath($user))->find('$.auth-provider.config.cmd-args')->first();
+
+        if (!$cmd_path) {
+            throw new \Error('error finding access token command. No command found.');
+        }
+
+        $command = $cmd_path;
+        if ($cmd_args) {
+            $command .= ' ' . $cmd_args;
+        }
 
         // execute command and store output
         $output = [];
@@ -546,17 +572,25 @@ class Config
             throw new \Error("error retrieving token: auth provider failed to return valid data");
         }
 
-        $expiry_key = (new JSONPath($user))->find('$.auth-provider.config.expiry-key')[0];
-        $token_key = (new JSONPath($user))->find('$.auth-provider.config.token-key')[0];
+        $expiry_key = (new JSONPath($user))->find('$.auth-provider.config.expiry-key')->first();
+        $token_key = (new JSONPath($user))->find('$.auth-provider.config.token-key')->first();
 
         if ($expiry_key) {
             $expiry_key = '$' . trim($expiry_key, "{}");
-            $this->setExpiry((new JSONPath($output))->find($expiry_key)[0]);
+            $expiry = (new JSONPath($output))->find($expiry_key)->first();
+            if ($expiry) {
+                // No expiry should be ok, thus never expiring token
+                $this->setExpiry($expiry);
+            }
         }
 
         if ($token_key) {
             $token_key = '$' . trim($token_key, "{}");
-            $this->setToken((new JSONPath($output))->find($token_key)[0]);
+            $token = (new JSONPath($output))->find($token_key)->first();
+            if (!$token) {
+                throw new \Error(sprintf('error retrieving token: token not found. Searching for key: "%s"', $token_key));
+            }
+            $this->setToken($token);
         }
     }
 
