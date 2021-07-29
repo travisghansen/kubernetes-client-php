@@ -174,15 +174,16 @@ class Config
      * Create a config based off running inside a cluster
      *
      * @return Config
+     * @throws \Error
      */
     public static function InClusterConfig()
     {
         if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/token')) {
-            throw new \Exception('Config based off running inside a cluster not available. Token not found.');
+            throw new \Error('Config based off running inside a cluster not available. Token not found.');
         }
 
         if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt')) {
-            throw new \Exception('Config based off running inside a cluster not available. CA not found.');
+            throw new \Error('Config based off running inside a cluster not available. CA not found.');
         }
 
         $config = new Config();
