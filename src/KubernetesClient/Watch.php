@@ -134,7 +134,7 @@ class Watch implements WatchIteratorInterface
      * @param array $params
      * @param \Closure $callback
      */
-    public function __construct(Client $client, $endpoint, $params = [], \Closure $callback)
+    public function __construct(Client $client, $endpoint, $params, \Closure $callback)
     {
         $this->client = $client;
         $this->endpoint = $endpoint;

@@ -167,7 +167,7 @@ class Client
      * @param \Closure $callback
      * @return Watch
      */
-    public function createWatch($endpoint, $params = [], \Closure $callback)
+    public function createWatch($endpoint, $params, \Closure $callback)
     {
         return new Watch($this, $endpoint, $params, $callback);
     }
