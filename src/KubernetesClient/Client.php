@@ -88,9 +88,10 @@ class Client
         $o['http']['method'] = $verb;
 
         if (substr($verb, 0, 5) == 'PATCH') {
+            $o['http']['method'] = 'PATCH';
+
             /**
-             * https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#patch-operations
-             * https://github.com/kubernetes/community/blob/master/contributors/devel/strategic-merge-patch.md
+             * https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#patch-operations
              *
              * Content-Type: application/json-patch+json
              * Content-Type: application/merge-patch+json
