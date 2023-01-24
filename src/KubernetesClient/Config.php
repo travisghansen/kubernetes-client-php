@@ -565,7 +565,7 @@ class Config
         $output = implode("\n", $output);
 
         if ($exit_code !== 0) {
-            throw new \Error("error executing access token command \"${command}\": ${output}");
+            throw new \Error("error executing access token command \"{$command}\": {$output}");
         } else {
             $output = json_decode($output, true);
         }
@@ -626,7 +626,7 @@ class Config
         // beware this sets the env var for the whole process indefinitely
         if (!empty($user['exec']['env'])) {
             foreach ($user['exec']['env'] as $env) {
-                putenv("${env['name']}=${env['value']}");
+                putenv("{$env['name']}={$env['value']}");
             }
         }
 
@@ -637,7 +637,7 @@ class Config
         $output = implode("\n", $output);
 
         if ($exit_code !== 0) {
-            throw new \Error("error executing access token command \"${command}\": ${output}");
+            throw new \Error("error executing access token command \"{$command}\": {$output}");
         } else {
             $output = json_decode($output, true);
         }

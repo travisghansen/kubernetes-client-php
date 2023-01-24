@@ -67,7 +67,7 @@ class Client
 
         $token = $this->config->getToken();
         if (!empty($token)) {
-            $opts['http']['header'] .= "Authorization: Bearer ${token}\r\n";
+            $opts['http']['header'] .= "Authorization: Bearer {$token}\r\n";
         }
 
         return $opts;
