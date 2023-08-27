@@ -607,6 +607,10 @@ class Watch implements WatchIteratorInterface
             return 1;
         }
 
+        if (key_exists('kind', $response) && $response['kind'] == 'Status' && $response['status'] == 'Failure') {
+            return 1;
+        }
+
         // resourceVersion is too old
         if ($response['type'] == 'ERROR' && $response['object']['code'] == 410) {
             return 1;
