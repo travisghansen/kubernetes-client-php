@@ -22,6 +22,13 @@ class Client
      */
     private $config;
 
+    /**
+     * Default request options
+     *
+     * @var array
+     */
+    protected $defaultRequestOptions = [];
+
     public function __construct(Config $config)
     {
         $this->config = $config;
@@ -44,7 +51,7 @@ class Client
      * @throws \Error
      * @throws JSONPathException
      */
-    private function getContextOptions()
+    protected function getContextOptions()
     {
         $opts = array(
             'http'=>array(
@@ -124,14 +131,22 @@ class Client
      * @param string $verb
      * @param array $params
      * @param null $data
+     * @param array $options
      * @throws \Exception
      * @return bool|mixed|string
      */
-    public function request($endpoint, $verb = 'GET', $params = [], $data = null)
+    public function request($endpoint, $verb = 'GET', $params = [], $data = null, $options = [])
     {
+        $encode_flags = $this->getRequestOption('encode_flags', $options);
+        $decode_flags = $this->getRequestOption('decode_flags', $options);
+
         $context = $this->getStreamContext($verb);
         if ($data) {
-            stream_context_set_option($context, array('http' => array('content' => json_encode($data))));
+            if (is_array($data) || is_object($data)) {
+                stream_context_set_option($context, array('http' => array('content' => json_encode($data, $encode_flags))));
+            } else {
+                stream_context_set_option($context, array('http' => array('content' => $data)));
+            }
         }
 
         $query = http_build_query($params);
@@ -155,7 +170,11 @@ class Client
         $response = stream_get_contents($handle);
         fclose($handle);
 
-        $response = json_decode($response, true);
+        $decode_response = $this->getRequestOption('decode_response', $options);
+        if ($decode_response) {
+            $associative = $this->getRequestOption('decode_associative', $options);
+            $response = json_decode($response, $associative, 512, $decode_flags);
+        }
 
         return $response;
     }
@@ -183,5 +202,46 @@ class Client
     public function createList($endpoint, $params = [])
     {
         return new ResourceList($this, $endpoint, $params);
+    }
+
+    /**
+     * Set default request options
+     *
+     * @param $options
+     * @return void
+     */
+    public function setDefaultRequestOptions($options) {
+        $this->defaultRequestOptions = $options;
+    }
+
+    /**
+     * Get request option value
+     *
+     * @param $option
+     * @param $options
+     * @return mixed|void
+     */
+    protected function getRequestOption($option, $options) {
+        $defaults = [
+            'encode_flags' => 0,
+            'decode_flags' => 0,
+            'decode_response' => true,
+            'decode_associative' => true,
+        ];
+
+        // request specific
+        if (key_exists($option, $options)) {
+            return $options[$option];
+        }
+
+        // client defaults
+        if (key_exists($option, $this->defaultRequestOptions)) {
+            return $this->defaultRequestOptions[$option];
+        }
+
+        // system defaults
+        if (key_exists($option, $defaults)) {
+            return $defaults[$option];
+        }
     }
 }
