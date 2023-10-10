@@ -17,6 +17,7 @@ composer.lock
 /php-cs-fixer.phar
 .php_cs.cache
 
+/dev
 
 # always keep .keep files around
 !.keep

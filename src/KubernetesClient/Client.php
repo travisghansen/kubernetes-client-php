@@ -221,7 +221,7 @@ class Client
      * @param $options
      * @return mixed|void
      */
-    protected function getRequestOption($option, $options) {
+    public function getRequestOption($option, $options) {
         $defaults = [
             'encode_flags' => 0,
             'decode_flags' => 0,

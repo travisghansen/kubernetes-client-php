@@ -177,7 +177,7 @@ class Config
      * Otherwise try to create a config based off running inside a cluster if corresponding files found.
      *
      * @return Config
-     * @throws \Error If no config can be found at at all the default paths.
+     * @throws \Error If no config can be found at all the default paths.
      */
     public static function LoadFromDefault()
     {

@@ -2,6 +2,8 @@
 
 namespace KubernetesClient;
 
+use KubernetesClient\Dotty\DotAccess;
+
 /**
  * Used for the various kubernetes watch endpoints for continuous feed of data
  *
@@ -201,6 +203,7 @@ class Watch implements WatchIteratorInterface
             $handle = @fopen($url, 'r', false, $this->getClient()->getStreamContext());
             if ($handle === false) {
                 $e = error_get_last();
+                var_dump($e);
                 throw new \Exception($e['message'], $e['type']);
             }
             stream_set_timeout($handle, 0, $this->getStreamTimeout());
@@ -408,7 +411,22 @@ class Watch implements WatchIteratorInterface
     {
         $handle = $this->getHandle();
         $i_cycles = 0;
+
+        $associative = $this->getClient()->getRequestOption('decode_associative', []);
+        $decode_flags = $this->getClient()->getRequestOption('decode_flags', []);
+        $decode_response = $this->getClient()->getRequestOption('decode_response', []);
+
+        /**
+         * Mitigation for improper ordering especially during initial load
+         * This acts as a tripwire, once tripped it should never go back to false
+         *
+         * https://github.com/kubernetes/kubernetes/issues/49745
+         */
+        $initial_load_finished = false;
         while (true) {
+            if (function_exists('pcntl_signal_dispatch')) {
+                \pcntl_signal_dispatch();
+            }
             if ($this->getStop()) {
                 $this->internal_stop();
                 return;
@@ -426,7 +444,7 @@ class Watch implements WatchIteratorInterface
 
             //$meta = stream_get_meta_data($handle);
             if (feof($handle)) {
-                if ($this->params['timeoutSeconds'] > 0) {
+                if (key_exists('timeoutSeconds', $this->params) && $this->params['timeoutSeconds'] > 0) {
                     //assume we've reached a successful end of watch
                     return;
                 } else {
@@ -449,6 +467,10 @@ class Watch implements WatchIteratorInterface
                 $this->setLastBytesReadTimestamp(time());
             }
 
+            if (!$initial_load_finished && empty($data)) {
+                $initial_load_finished = true;
+            }
+
             $this->buffer .= $data;
 
             //break immediately if nothing is on the buffer
@@ -462,7 +484,7 @@ class Watch implements WatchIteratorInterface
                 for ($x = 0; $x < ($parts_count - 1); $x++) {
                     if (!empty($parts[$x])) {
                         try {
-                            $response = json_decode($parts[$x], true);
+                            $response = json_decode($parts[$x], $associative, 512, $decode_flags);
                             $code = $this->preProcessResponse($response);
                             if ($code != 0) {
                                 $this->resetHandle();
@@ -471,12 +493,24 @@ class Watch implements WatchIteratorInterface
                                 goto end;
                             }
 
-                            if ($response['object']['metadata']['resourceVersion'] > $this->getResourceVersionLastSuccess()) {
-                                ($this->callback)($response, $this);
+                            if (!$initial_load_finished && DotAccess::get($response, 'type') != "ADDED") {
+                                $initial_load_finished = true;
                             }
 
-                            $this->setResourceVersion($response['object']['metadata']['resourceVersion']);
-                            $this->setResourceVersionLastSuccess($response['object']['metadata']['resourceVersion']);
+                            $rv = DotAccess::get($response, 'object.metadata.resourceVersion');
+
+                            if (!$initial_load_finished || $rv > $this->getResourceVersionLastSuccess()) {
+                                if (!$decode_response) {
+                                    ($this->callback)($parts[$x], $this);
+                                } else {
+                                    ($this->callback)($response, $this);
+                                }
+                            }
+
+                            if ($rv > $this->getResourceVersionLastSuccess()) {
+                                $this->setResourceVersion($rv);
+                                $this->setResourceVersionLastSuccess($rv);
+                            }
 
                             if ($this->getStop()) {
                                 $this->internal_stop();
@@ -509,7 +543,23 @@ class Watch implements WatchIteratorInterface
     {
         $handle = $this->getHandle();
         $i_cycles = 0;
+
+        $associative = $this->getClient()->getRequestOption('decode_associative', []);
+        $decode_flags = $this->getClient()->getRequestOption('decode_flags', []);
+        $decode_response = $this->getClient()->getRequestOption('decode_response', []);
+
+        /**
+         * Mitigation for improper ordering especially during initial load
+         * This acts as a tripwire, once tripped it should never go back to false
+         *
+         * https://github.com/kubernetes/kubernetes/issues/49745
+         */
+        $initial_load_finished = false;
         while (true) {
+            if (function_exists('pcntl_signal_dispatch')) {
+                \pcntl_signal_dispatch();
+            }
+
             if ($this->getStop()) {
                 $this->internal_stop();
                 return;
@@ -527,7 +577,7 @@ class Watch implements WatchIteratorInterface
 
             //$meta = stream_get_meta_data($handle);
             if (feof($handle)) {
-                if ($this->params['timeoutSeconds'] > 0) {
+                if (key_exists('timeoutSeconds', $this->params) && $this->params['timeoutSeconds'] > 0) {
                     //assume we've reached a successful end of watch
                     return;
                 } else {
@@ -550,6 +600,10 @@ class Watch implements WatchIteratorInterface
                 $this->setLastBytesReadTimestamp(time());
             }
 
+            if (!$initial_load_finished && empty($data)) {
+                $initial_load_finished = true;
+            }
+
             $this->buffer .= $data;
 
             //break immediately if nothing is on the buffer
@@ -563,7 +617,7 @@ class Watch implements WatchIteratorInterface
                 for ($x = 0; $x < ($parts_count - 1); $x++) {
                     if (!empty($parts[$x])) {
                         try {
-                            $response = json_decode($parts[$x], true);
+                            $response = json_decode($parts[$x], $associative, 512, $decode_flags);
                             $code = $this->preProcessResponse($response);
                             if ($code != 0) {
                                 $this->resetHandle();
@@ -572,13 +626,26 @@ class Watch implements WatchIteratorInterface
                                 goto end;
                             }
 
-                            $yield = ($response['object']['metadata']['resourceVersion'] > $this->getResourceVersionLastSuccess());
+                            if (!$initial_load_finished && DotAccess::get($response, 'type') != "ADDED") {
+                                $initial_load_finished = true;
+                            }
 
-                            $this->setResourceVersion($response['object']['metadata']['resourceVersion']);
-                            $this->setResourceVersionLastSuccess($response['object']['metadata']['resourceVersion']);
+                            $rv = DotAccess::get($response, 'object.metadata.resourceVersion');
+
+                            // https://github.com/kubernetes/kubernetes/issues/49745
+                            $yield = (!$initial_load_finished || $rv > $this->getResourceVersionLastSuccess());
+
+                            if ($rv > $this->getResourceVersionLastSuccess()) {
+                                $this->setResourceVersion($rv);
+                                $this->setResourceVersionLastSuccess($rv);
+                            }
 
                             if ($yield) {
-                                yield $response;
+                                if (!$decode_response) {
+                                    yield $parts[$x];
+                                } else {
+                                    yield $response;
+                                }
                             }
 
                             if ($this->getStop()) {
@@ -603,16 +670,16 @@ class Watch implements WatchIteratorInterface
 
     private function preProcessResponse($response)
     {
-        if (!is_array($response)) {
+        if (!DotAccess::isStructuredData($response)) {
             return 1;
         }
 
-        if (key_exists('kind', $response) && $response['kind'] == 'Status' && $response['status'] == 'Failure') {
+        if(DotAccess::get($response, 'kind', null) == 'Status' && DotAccess::get($response, 'status', null) == 'Failure') {
             return 1;
         }
 
         // resourceVersion is too old
-        if ($response['type'] == 'ERROR' && $response['object']['code'] == 410) {
+        if (DotAccess::get($response, 'type', null) == 'ERROR' && DotAccess::get($response, 'object.code', null) == 410) {
             return 1;
         }
 
