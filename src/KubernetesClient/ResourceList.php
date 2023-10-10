@@ -2,6 +2,8 @@
 
 namespace KubernetesClient;
 
+use KubernetesClient\Dotty\DotAccess;
+
 /**
  * Used to iterate large lists of data over multiple requests. Uses the kubernetes 'continue' feature to keep making
  * subsequent requests.
@@ -89,13 +91,13 @@ class ResourceList
         $list = $this->getClient()->request($endpoint, 'GET', $params);
 
         $i = 1;
-        while (array_key_exists('continue', $list['metadata']) && $list['metadata']['continue']) {
+        while (DotAccess::get($list, 'metadata.continue', false)) {
             if ($pages > 0 && $pages >= $i) {
                 return $list;
             }
-            $params['continue'] = $list['metadata']['continue'];
+            $params['continue'] = DotAccess::get($list, 'metadata.continue');
             $i_list = $this->getClient()->request($endpoint, 'GET', $params);
-            $i_list['items'] = array_merge($list['items'], $i_list['items']);
+            DotAccess::set($i_list, 'items', array_merge(DotAccess::get($list, 'items'), DotAccess::get($i_list, 'items')));
             $list = $i_list;
             unset($i_list);
             $i++;
@@ -115,14 +117,14 @@ class ResourceList
         $endpoint = $this->getEndpoint();
         $params = $this->getParams();
         $list = $this->getClient()->request($endpoint, 'GET', $params);
-        foreach ($list['items'] as $item) {
+        foreach (DotAccess::get($list, 'items') as $item) {
             yield $item;
         }
 
-        while (array_key_exists('continue', $list['metadata']) && $list['metadata']['continue']) {
-            $params['continue'] = $list['metadata']['continue'];
+        while (DotAccess::get($list, 'metadata.continue', false)) {
+            $params['continue'] = DotAccess::get($list, 'metadata.continue');
             $list = $this->getClient()->request($endpoint, 'GET', $params);
-            foreach ($list['items'] as $item) {
+            foreach (DotAccess::get($list, 'items', false) as $item) {
                 yield $item;
             }
         }
