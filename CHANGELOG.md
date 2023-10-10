@@ -1,3 +1,9 @@
+# v0.4.1
+
+Released 2023-10-10
+
+- add `unset` method to `Dotty`
+
 # v0.4.0
 
 Released 2023-10-09

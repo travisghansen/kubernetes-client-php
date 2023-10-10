@@ -51,6 +51,15 @@ class DotAccess {
         }
     }
 
+    public static function propUnset(&$data, $key) {
+        if (is_object($data)) {
+            unset($data->{$key});
+        }
+        if (is_array($data)) {
+            unset($data[$key]);
+        }
+    }
+
     public static function isStructuredData(&$data) {
         if (is_object($data) || is_array($data)) {
             return true;
@@ -136,6 +145,36 @@ class DotAccess {
                 } else {
                     throw new \Exception('necessary parents do not exist');
                 }
+            }
+
+            $currentValue = &self::propGet($currentValue, $currentKey);
+        }
+    }
+
+    public static function unset(&$data, $key) {
+        if (is_string($key)) {
+            $keyPath = self::keyToPathArray($key);
+        } else {
+            $keyPath = $key;
+        }
+
+        $currentValue = &$data;
+
+        $keySize = sizeof($keyPath);
+        for ($i = 0; $i < $keySize; $i++) {
+            $currentKey = $keyPath[$i];
+
+            if ($i == ($keySize - 1)) {
+                self::propUnset($currentValue, $currentKey);
+                return;
+            }
+
+            if (!self::isStructuredData($currentValue)) {
+                return;
+            }
+
+            if (!self::propExists($currentValue, $currentKey)) {
+                return;
             }
 
             $currentValue = &self::propGet($currentValue, $currentKey);
