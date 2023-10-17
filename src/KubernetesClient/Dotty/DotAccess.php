@@ -88,7 +88,10 @@ class DotAccess {
             $currentValue = &self::propGet($currentValue, $currentKey);
         }
 
-        return $currentValue === null ? $default : $currentValue;
+        if ($currentValue === null)
+            return $default;
+        else
+            return $currentValue;
     }
 
     public static function exists(&$currentValue, $key) {
