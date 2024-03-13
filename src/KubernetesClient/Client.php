@@ -60,6 +60,10 @@ class Client
             ),
         );
 
+        if (!$this->config->getVerifyPeerName()) {
+            $opts['ssl']['verify_peer_name'] = false;
+        }
+
         if (!empty($this->config->getCertificateAuthorityPath())) {
             $opts['ssl']['cafile'] = $this->config->getCertificateAuthorityPath();
         }
