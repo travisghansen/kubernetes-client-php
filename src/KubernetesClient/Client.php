@@ -134,7 +134,7 @@ class Client
      * @param $endpoint
      * @param string $verb
      * @param array $params
-     * @param null $data
+     * @param mixed $data
      * @param array $options
      * @throws \Exception
      * @return bool|mixed|string
