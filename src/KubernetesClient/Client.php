@@ -60,6 +60,10 @@ class Client
             ),
         );
 
+        if (!$this->config->getVerifyPeerName()) {
+            $opts['ssl']['verify_peer_name'] = false;
+        }
+
         if (!empty($this->config->getCertificateAuthorityPath())) {
             $opts['ssl']['cafile'] = $this->config->getCertificateAuthorityPath();
         }
@@ -130,7 +134,7 @@ class Client
      * @param $endpoint
      * @param string $verb
      * @param array $params
-     * @param null $data
+     * @param mixed $data
      * @param array $options
      * @throws \Exception
      * @return bool|mixed|string

@@ -64,12 +64,19 @@ class Config
      */
     private $activeContextName;
 
+     /**
+     * If SSL peer name verification is enabled
+     *
+     * @var bool
+     */
+    private $verifyPeerName = true;
+
     /**
      * Path to client PEM certificate
      *
      * @var string
      */
-    private $clientCertificatePath ;
+    private $clientCertificatePath;
 
     /**
      * Path to client PEM key
@@ -694,6 +701,26 @@ class Config
     public function getExpiry()
     {
         return $this->expiry;
+    }
+
+    /**
+     * Set SSL peer name verification enabled or disabled
+     *
+     * @param $path
+     */
+    public function setVerifyPeerName($enabled)
+    {
+        $this->verifyPeerName = $enabled;
+    }
+
+     /**
+     * Check if SSL peer name verification is enabled or disabled
+     *
+     * @return int
+     */
+    public function getVerifyPeerName()
+    {
+        return $this->verifyPeerName;
     }
 
     /**
