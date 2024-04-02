@@ -115,6 +115,9 @@ class Client
                 case 'PATCH-STRATEGIC-MERGE':
                     $o['http']['header'] .= "Content-Type: application/strategic-merge-patch+json\r\n";
                     break;
+                case 'PATCH-APPLY':
+                    $o['http']['header'] .= "Content-Type: application/apply-patch+yaml\r\n";
+                    break;
                 case 'PATCH':
                 case 'PATCH-MERGE':
                 default:
