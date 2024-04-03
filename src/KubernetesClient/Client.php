@@ -3,6 +3,7 @@
 namespace KubernetesClient;
 
 use Flow\JSONPath\JSONPathException;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Client class for interacting with a kubernetes API.  Primary interface should be:
@@ -131,6 +132,49 @@ class Client
         return stream_context_create($o);
     }
 
+    protected function setStreamBody($context, $verb = 'GET', $data, $options = [])
+    {
+        if (is_array($data) || is_object($data)) {
+            switch ($verb) {
+                case 'PATCH-APPLY':
+                    stream_context_set_option($context, array('http' => array('content' => $this->encodeYamlBody($data, $options))));
+                    break;
+                default:
+                    stream_context_set_option($context, array('http' => array('content' => $this->encodeJsonBody($data, $options))));
+                    break;
+            }
+        } else {
+            stream_context_set_option($context, array('http' => array('content' => $data)));
+        }
+    }
+
+    private function encodeJsonBody($data, $options = [])
+    {
+        $encode_flags = $this->getRequestOption('encode_flags', $options);
+        return json_encode($data, $encode_flags);
+    }
+
+    private function encodeYamlBody($data, $options = [])
+    {
+        if (function_exists('yaml_emit')) {
+            return yaml_emit($data);
+        } else {
+            return Yaml::dump(
+                $data,
+                // This is the depth that symfony/yaml switches to "inline" (JSON-ish) YAML.
+                // Set to a high number to try and keep behaviour vaguely consistent with
+                // yaml_emit which never does this.
+                PHP_INT_MAX,
+                // Default to 2 spaces, as in yaml_emit
+                2,
+                // When dumping associative arrays, yaml_emit will output an empty array as `[]`
+                // by default, where-as symfony/yaml will output as `{}`. This flag has it dumped
+                // as `[]` to keep them consistent.
+                Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE
+            );
+        }
+    }
+
     /**
      * Make a request to the API
      *
@@ -144,16 +188,11 @@ class Client
      */
     public function request($endpoint, $verb = 'GET', $params = [], $data = null, $options = [])
     {
-        $encode_flags = $this->getRequestOption('encode_flags', $options);
         $decode_flags = $this->getRequestOption('decode_flags', $options);
 
         $context = $this->getStreamContext($verb);
         if ($data) {
-            if (is_array($data) || is_object($data)) {
-                stream_context_set_option($context, array('http' => array('content' => json_encode($data, $encode_flags))));
-            } else {
-                stream_context_set_option($context, array('http' => array('content' => $data)));
-            }
+            $this->setStreamBody($context, $verb, $data, $options);
         }
 
         $query = http_build_query($params);
