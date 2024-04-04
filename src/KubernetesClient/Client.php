@@ -269,7 +269,7 @@ class Client
      */
     public function getRequestOption($option, $options) {
         $defaults = [
-            'encode_flags' => 0,
+            'encode_flags' => \JSON_UNESCAPED_SLASHES,
             'decode_flags' => 0,
             'decode_response' => true,
             'decode_associative' => true,
