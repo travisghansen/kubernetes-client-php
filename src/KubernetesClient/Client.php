@@ -132,7 +132,7 @@ class Client
         return stream_context_create($o);
     }
 
-    protected function setStreamBody($context, $verb = 'GET', $data, $options = [])
+    protected function setStreamBody($context, $verb = 'GET', $data = null, $options = [])
     {
         if (is_array($data) || is_object($data)) {
             switch ($verb) {
