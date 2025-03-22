@@ -1,3 +1,16 @@
+# v0.4.5
+
+Released 2025-03-22
+
+- force proper `json_encode` flags (see #12)
+- fix php 8.4 warnings (see #17)
+
+# v0.4.2
+
+Released 2023-10-10
+
+- support for non-associative array responses
+
 # v0.4.1
 
 Released 2023-10-10

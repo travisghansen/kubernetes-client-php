@@ -151,7 +151,7 @@ class Client
     private function encodeJsonBody($data, $options = [])
     {
         $encode_flags = $this->getRequestOption('encode_flags', $options);
-        return json_encode($data, $encode_flags);
+        return json_encode($data, $encode_flags | \JSON_UNESCAPED_SLASHES);
     }
 
     private function encodeYamlBody($data, $options = [])
