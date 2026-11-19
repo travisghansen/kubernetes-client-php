@@ -61,6 +61,9 @@ class Client
             ),
         );
 
+        // must be invoked prior to reading cert/key paths as it may refresh them (ie: exec provider)
+        $token = $this->config->getToken();
+
         if (!$this->config->getVerifyPeerName()) {
             $opts['ssl']['verify_peer_name'] = false;
         }
@@ -77,7 +80,6 @@ class Client
             $opts['ssl']['local_pk'] = $this->config->getClientKeyPath();
         }
 
-        $token = $this->config->getToken();
         if (!empty($token)) {
             $opts['http']['header'] .= "Authorization: Bearer {$token}\r\n";
         }

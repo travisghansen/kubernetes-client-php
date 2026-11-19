@@ -203,7 +203,6 @@ class Watch implements WatchIteratorInterface
             $handle = @fopen($url, 'r', false, $this->getClient()->getStreamContext());
             if ($handle === false) {
                 $e = error_get_last();
-                var_dump($e);
                 throw new \Exception($e['message'], $e['type']);
             }
             stream_set_timeout($handle, 0, $this->getStreamTimeout());

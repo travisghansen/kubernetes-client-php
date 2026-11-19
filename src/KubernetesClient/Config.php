@@ -100,6 +100,34 @@ class Config
     private $token;
 
     /**
+     * Path to a file containing the authorization token (ie: projected service account token)
+     *
+     * @var string
+     */
+    private $tokenPath;
+
+    /**
+     * timestamp of when the token was last read from tokenPath
+     *
+     * @var int
+     */
+    private $tokenLastRead;
+
+    /**
+     * Path to the config file as originally given (symlinks unresolved)
+     *
+     * @var string
+     */
+    private $configFilePath;
+
+    /**
+     * Seconds between re-reading the token file, 0 disables
+     *
+     * @var int
+     */
+    private $refreshInterval = 60;
+
+    /**
      * timestamp of token expiration
      *
      * @var int
@@ -198,22 +226,26 @@ class Config
     /**
      * Create a config based off running inside a cluster
      *
+     * The token is re-read from disk periodically (see setRefreshInterval) to support token rotation
+     *
+     * @param  string $tokenPath
+     * @param  string $caPath
      * @return Config
      * @throws \Error
      */
-    public static function InClusterConfig()
+    public static function InClusterConfig($tokenPath = '/var/run/secrets/kubernetes.io/serviceaccount/token', $caPath = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt')
     {
-        if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/token')) {
+        if (!file_exists($tokenPath)) {
             throw new \Error('Config based off running inside a cluster not available. Token not found.');
         }
 
-        if (!file_exists('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt')) {
+        if (!file_exists($caPath)) {
             throw new \Error('Config based off running inside a cluster not available. CA not found.');
         }
 
         $config = new Config();
-        $config->setToken(file_get_contents('/var/run/secrets/kubernetes.io/serviceaccount/token'));
-        $config->setCertificateAuthorityPath('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt');
+        $config->setTokenPath($tokenPath);
+        $config->setCertificateAuthorityPath($caPath);
 
         if (strlen(getenv('KUBERNETES_SERVICE_HOST')) > 0) {
             $server = 'https://' . getenv('KUBERNETES_SERVICE_HOST') . ':' . getenv('KUBERNETES_SERVICE_PORT');
@@ -249,6 +281,7 @@ class Config
         }
 
 
+
         if (function_exists('yaml_parse_file')) {
             $yaml = yaml_parse_file($path);
             if (false === $yaml) {
@@ -268,6 +301,7 @@ class Config
 
         $config = new Config();
         $config->setPath($path);
+        $config->configFilePath = $path;
         $config->setParsedConfigFile($yaml);
         $config->useContext($contextName);
 
@@ -345,6 +379,17 @@ class Config
             $this->setToken($user['token']);
         }
 
+        if (empty($user['token']) && !empty($user['tokenFile'])) {
+            $tokenFile = $user['tokenFile'];
+            // relative paths are relative to the directory holding the config file
+            // use the unresolved path as symlinked targets may be swapped out (ie: mounted secret/configmap)
+            $configPath = $this->configFilePath ?: $this->getPath();
+            if (substr($tokenFile, 0, 1) != '/' && !empty($configPath)) {
+                $tokenFile = dirname($configPath) . '/' . $tokenFile;
+            }
+            $this->setTokenPath($tokenFile);
+        }
+
         // should never have both auth-provider and exec at the same time
 
         if (!empty($user['auth-provider'])) {
@@ -368,6 +413,7 @@ class Config
         $this->setClientKeyPath(null);
         $this->setExpiry(null);
         $this->setToken(null);
+        $this->setTokenPath(null);
         $this->setIsAuthProvider(false);
         $this->setIsExecProvider(false);
     }
@@ -514,6 +560,14 @@ class Config
      */
     public function getToken()
     {
+        if (!empty($this->tokenPath)) {
+            if (empty($this->tokenLastRead) ||
+                (!empty($this->getRefreshInterval()) && (time() - $this->tokenLastRead) >= $this->getRefreshInterval())
+            ) {
+                $this->loadTokenFromFile();
+            }
+        }
+
         if ($this->getIsAuthProvider()) {
             // set token if expired
             if ($this->getExpiry() && time() >= $this->getExpiry()) {
@@ -526,8 +580,8 @@ class Config
             }
         }
 
-        // only do this if token is present to begin with
-        if ($this->getIsExecProvider() && !empty($this->token)) {
+        // exec providers may return a token and/or client cert/key, refresh all if expired
+        if ($this->getIsExecProvider()) {
             // set token if expired
             if ($this->getExpiry() && time() >= $this->getExpiry()) {
                 $this->getExecProviderAuth();
@@ -535,6 +589,69 @@ class Config
         }
 
         return $this->token;
+    }
+
+    /**
+     * Set the token from the contents of tokenPath
+     *
+     * If the file cannot be read (ie: mid-rotation) the current token is retained.
+     *
+     * @throws \Error if the file cannot be read and no token has been loaded yet
+     */
+    protected function loadTokenFromFile()
+    {
+        $token = @file_get_contents($this->tokenPath);
+        if (false === $token) {
+            if (empty($this->token)) {
+                throw new \Error('Unable to read token file: ' . $this->tokenPath);
+            }
+
+            return;
+        }
+
+        $this->token = trim($token);
+        $this->tokenLastRead = time();
+    }
+
+    /**
+     * Set token path
+     *
+     * @param $path
+     */
+    public function setTokenPath($path)
+    {
+        $this->tokenPath = $path;
+        $this->tokenLastRead = null;
+    }
+
+    /**
+     * Get token path
+     *
+     * @return string
+     */
+    public function getTokenPath()
+    {
+        return $this->tokenPath;
+    }
+
+    /**
+     * Set seconds between re-reading the token file, 0 disables
+     *
+     * @param $seconds int
+     */
+    public function setRefreshInterval($seconds)
+    {
+        $this->refreshInterval = (int) $seconds;
+    }
+
+    /**
+     * Get seconds between re-reading the token file
+     *
+     * @return int
+     */
+    public function getRefreshInterval()
+    {
+        return $this->refreshInterval;
     }
 
     /**
