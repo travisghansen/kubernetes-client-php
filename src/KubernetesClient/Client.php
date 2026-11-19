@@ -139,15 +139,16 @@ class Client
         if (is_array($data) || is_object($data)) {
             switch ($verb) {
                 case 'PATCH-APPLY':
-                    stream_context_set_option($context, array('http' => array('content' => $this->encodeYamlBody($data, $options))));
+                    $data = $this->encodeYamlBody($data, $options);
                     break;
                 default:
-                    stream_context_set_option($context, array('http' => array('content' => $this->encodeJsonBody($data, $options))));
+                    $data = $this->encodeJsonBody($data, $options);
                     break;
             }
-        } else {
-            stream_context_set_option($context, array('http' => array('content' => $data)));
         }
+
+        // the 2 argument (array) form is deprecated as of php 8.4
+        stream_context_set_option($context, 'http', 'content', $data);
     }
 
     private function encodeJsonBody($data, $options = [])

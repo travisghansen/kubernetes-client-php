@@ -1,3 +1,10 @@
+# v0.4.7
+
+Released 2026-11-19
+
+- allow `symfony/yaml` `^8.0`
+- fix php 8.4 deprecation warning when setting request bodies (`stream_context_set_option`)
+
 # v0.4.6
 
 Released 2026-11-19
