@@ -2,7 +2,6 @@
 
 namespace KubernetesClient;
 
-use Flow\JSONPath\JSONPathException;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -50,7 +49,6 @@ class Client
      *
      * @return array
      * @throws \Error
-     * @throws JSONPathException
      */
     protected function getContextOptions()
     {
@@ -94,7 +92,6 @@ class Client
      * @param array $opts
      * @return resource
      * @throws \Error
-     * @throws JSONPathException
      */
     public function getStreamContext($verb = 'GET', $opts = [])
     {

@@ -2,8 +2,6 @@
 
 namespace KubernetesClient;
 
-use Flow\JSONPath\JSONPath;
-use Flow\JSONPath\JSONPathException;
 use Symfony\Component\Yaml\Yaml;
 
 class Config
@@ -133,13 +131,6 @@ class Config
      * @var int
      */
     private $expiry;
-
-    /**
-     * If the user token is generated via an auth provider such as gcp or azure
-     *
-     * @var bool
-     */
-    private $isAuthProvider = false;
 
     /**
      * If the user auth data is generated via an exec provider
@@ -390,10 +381,9 @@ class Config
             $this->setTokenPath($tokenFile);
         }
 
-        // should never have both auth-provider and exec at the same time
-
+        // removed upstream in kubernetes 1.26 in favor of exec credential plugins
         if (!empty($user['auth-provider'])) {
-            $this->setIsAuthProvider(true);
+            throw new \Error('auth-provider is no longer supported, use an exec credential plugin instead: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins');
         }
 
         if (!empty($user['exec'])) {
@@ -414,7 +404,6 @@ class Config
         $this->setExpiry(null);
         $this->setToken(null);
         $this->setTokenPath(null);
-        $this->setIsAuthProvider(false);
         $this->setIsExecProvider(false);
     }
 
@@ -555,7 +544,6 @@ class Config
     /**
      * Get token
      *
-     * @throws JSONPathException
      * @return string
      */
     public function getToken()
@@ -565,18 +553,6 @@ class Config
                 (!empty($this->getRefreshInterval()) && (time() - $this->tokenLastRead) >= $this->getRefreshInterval())
             ) {
                 $this->loadTokenFromFile();
-            }
-        }
-
-        if ($this->getIsAuthProvider()) {
-            // set token if expired
-            if ($this->getExpiry() && time() >= $this->getExpiry()) {
-                $this->getAuthProviderToken();
-            }
-
-            // set token if we do not have one yet
-            if (empty($this->token)) {
-                $this->getAuthProviderToken();
             }
         }
 
@@ -652,72 +628,6 @@ class Config
     public function getRefreshInterval()
     {
         return $this->refreshInterval;
-    }
-
-    /**
-     * @link https://github.com/kubernetes-client/javascript/blob/master/src/cloud_auth.ts - Official JS Implementation
-     *
-     * Set the token and expiry when using an auth provider
-     *
-     * @throws JSONPathException
-     * @throws Error
-     */
-    protected function getAuthProviderToken()
-    {
-        $user = $this->getUser();
-
-        // gcp, azure, etc
-        //$name = (new JSONPath($user))->find('$.auth-provider.name')->first();
-
-        // build command
-        $cmd_path = (new JSONPath($user))->find('$.auth-provider.config.cmd-path')->first();
-        $cmd_args = (new JSONPath($user))->find('$.auth-provider.config.cmd-args')->first();
-
-        if (!$cmd_path) {
-            throw new \Error('error finding access token command. No command found.');
-        }
-
-        $command = $cmd_path;
-        if ($cmd_args) {
-            $command .= ' ' . $cmd_args;
-        }
-
-        // execute command and store output
-        $output = [];
-        $exit_code = null;
-        exec($command, $output, $exit_code);
-        $output = implode("\n", $output);
-
-        if ($exit_code !== 0) {
-            throw new \Error("error executing access token command \"{$command}\": {$output}");
-        } else {
-            $output = json_decode($output, true);
-        }
-
-        if (!is_array($output) || empty($output)) {
-            throw new \Error("error retrieving token: auth provider failed to return valid data");
-        }
-
-        $expiry_key = (new JSONPath($user))->find('$.auth-provider.config.expiry-key')->first();
-        $token_key = (new JSONPath($user))->find('$.auth-provider.config.token-key')->first();
-
-        if ($expiry_key) {
-            $expiry_key = '$' . trim($expiry_key, "{}");
-            $expiry = (new JSONPath($output))->find($expiry_key)->first();
-            if ($expiry) {
-                // No expiry should be ok, thus never expiring token
-                $this->setExpiry($expiry);
-            }
-        }
-
-        if ($token_key) {
-            $token_key = '$' . trim($token_key, "{}");
-            $token = (new JSONPath($output))->find($token_key)->first();
-            if (!$token) {
-                throw new \Error(sprintf('error retrieving token: token not found. Searching for key: "%s"', $token_key));
-            }
-            $this->setToken($token);
-        }
     }
 
     /**
@@ -901,26 +811,6 @@ class Config
     public function getCertificateAuthorityPath()
     {
         return $this->certificateAuthorityPath;
-    }
-
-    /**
-     * Set if user credentials use auth provider
-     *
-     * @param $v bool
-     */
-    public function setIsAuthProvider($v)
-    {
-        $this->isAuthProvider = $v;
-    }
-
-    /**
-     * Get if user credentials use auth provider
-     *
-     * @return bool
-     */
-    public function getIsAuthProvider()
-    {
-        return $this->isAuthProvider;
     }
 
     /**

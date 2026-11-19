@@ -1,3 +1,12 @@
+# v0.5.0
+
+Released 2026-11-19
+
+- **BREAKING:** remove support for kubeconfig `auth-provider` users (removed upstream in kubernetes 1.26), use an exec
+  credential plugin instead
+- **BREAKING:** remove `Config::setIsAuthProvider()` and `Config::getIsAuthProvider()`
+- remove `softcreatr/jsonpath` dependency (see #15)
+
 # v0.4.7
 
 Released 2026-11-19
